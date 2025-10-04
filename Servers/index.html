@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2GIS Map API</title>
+    <meta name="description" content="Quickstart with 2GIS Map API" />
+    <style>
+        html, body, #container {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #authButton {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        #authButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .close {
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .auth-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .user-type-group {
+            margin: 20px 0;
+        }
+        
+        .user-type-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .user-type-options {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .user-type-option {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .user-type-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .user-type-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .health-category-group {
+            margin: 15px 0;
+        }
+        
+        .health-checkbox {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .health-checkbox input {
+            margin-right: 10px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .auth-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .auth-link {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 10px;
+            cursor: pointer;
+        }
+        
+        .auth-link:hover {
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #27ae60;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Кнопка для открытия авторизации -->
+    <button id="authButton">Авторизация</button>
+    
+    <!-- Контейнер для карты -->
+    <div id="container"></div>
+    
+    <!-- Модальное окно авторизации -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="auth-title">Вход в систему</div>
+            
+            <form id="authForm">
+                <div class="form-group">
+                    <label class="form-label">Email или логин</label>
+                    <input type="text" class="form-input" id="login" required>
+                    <div class="error-message" id="loginError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="password" required>
+                    <div class="error-message" id="passwordError"></div>
+                </div>
+
+                <!-- Выбор типа пользователя -->
+                <div class="user-type-group">
+                    <label class="user-type-label">Выберите тип пользователя:</label>
+                    <div class="user-type-options">
+                        <div class="user-type-option" data-type="invalid">
+                            Инвалид
+                        </div>
+                        <div class="user-type-option" data-type="volunteer">
+                            Волонтер
+                        </div>
+                    </div>
+                    <div class="error-message" id="userTypeError"></div>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">Войти</button>
+            </form>
+
+            <div class="auth-links">
+                <a href="#" class="auth-link">Забыли пароль?</a>
+                <a href="#" class="auth-link" id="registerLink">Регистрация</a>
+            </div>
+
+            <div class="success-message" id="successMessage" style="display: none;">
+                Данные сохранены!
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно регистрации -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-register">&times;</span>
+            <div class="auth-title">Регистрация</div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label">Имя</label>
+                    <input type="text" class="form-input" id="firstName" required>
+                    <div class="error-message" id="firstNameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Фамилия</label>
+                    <input type="text" class="form-input" id="lastName" required>
+                    <div class="error-message" id="lastNameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email (логин)</label>
+                    <input type="email" class="form-input" id="email" required>
+                    <div class="error-message" id="emailError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Район</label>
+                    <input type="text" class="form-input" id="district" required>
+                    <div class="error-message" id="districtError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="regPassword" required>
+                    <div class="error-message" id="regPasswordError"></div>
+                </div>
+
+                <!-- Категория здоровья -->
+                <div class="form-group">
+                    <label class="form-label">Категория здоровья</label>
+                    <div class="health-category-group">
+                        <div class="health-checkbox">
+                            <input type="checkbox" id="mobility" value="mobility">
+                            <label for="mobility">Ограничение мобильности</label>
+                        </div>
+                        <div class="health-checkbox">
+                            <input type="checkbox" id="vision" value="vision">
+                            <label for="vision">Нарушение зрения</label>
+                        </div>
+                        <div class="health-checkbox">
+                            <input type="checkbox" id="hearing" value="hearing">
+                            <label for="hearing">Нарушение слуха</label>
+                        </div>
+                        <div class="health-checkbox">
+                            <input type="checkbox" id="mute" value="mute">
+                            <label for="mute">Немые</label>
+                        </div>
+                    </div>
+                    <div class="error-message" id="healthError"></div>
+                </div>
+
+                <button type="submit" class="btn" id="registerSubmitBtn">Зарегистрироваться</button>
+                <button type="button" class="btn btn-secondary" id="backToLogin" style="margin-top: 10px;">Назад к входу</button>
+            </form>
+
+            <div class="success-message" id="regSuccessMessage" style="display: none;">
+                Регистрация успешна!
+            </div>
+        </div>
+    </div>
+
+    <script src="https://mapgl.2gis.com/api/js/v1"></script>
+    <script>
+        // Инициализация карты
+        var map = new mapgl.Map('container', {
+            center: [55.31878, 25.23584],
+            zoom: 13,
+            key: '783e0858-39de-4c83-a72c-bc2858c795be',
+            style: 'c080bb6a-8134-4993-93a1-5b4d8c36a59b'
+        });
+        
+        var marker = new mapgl.Marker(map, {
+            coordinates: [55.31878, 25.23584],
+        });
+
+        // Переменные для модальных окон
+        var authModal = document.getElementById('authModal');
+        var registerModal = document.getElementById('registerModal');
+        var authButton = document.getElementById('authButton');
+        var closeBtns = document.querySelectorAll('.close, .close-register');
+        var registerLink = document.getElementById('registerLink');
+        var backToLoginBtn = document.getElementById('backToLogin');
+
+        // Функция для проверки зарегистрированного пользователя
+        function checkUserRegistration(login, password) {
+            var registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+            
+            // Ищем пользователя по email/логину
+            var user = registeredUsers.find(function(user) {
+                return user.email === login && user.password === password;
+            });
+            
+            return user; // Возвращаем пользователя если найден, иначе undefined
+        }
+
+        // Функция для сохранения зарегистрированного пользователя
+        function saveRegisteredUser(userData) {
+            var registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+            
+            // Проверяем, нет ли уже пользователя с таким email
+            var existingUser = registeredUsers.find(function(user) {
+                return user.email === userData.email;
+            });
+            
+            if (existingUser) {
+                return false; // Пользователь уже существует
+            }
+            
+            registeredUsers.push(userData);
+            localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+            return true; // Пользователь успешно сохранен
+        }
+
+        // Открыть модальное окно авторизации
+        authButton.addEventListener('click', function() {
+            authModal.style.display = 'flex';
+            resetUserTypeSelection();
+        });
+
+        // Переход к регистрации
+        registerLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            authModal.style.display = 'none';
+            registerModal.style.display = 'flex';
+        });
+
+        // Возврат к авторизации
+        backToLoginBtn.addEventListener('click', function() {
+            registerModal.style.display = 'none';
+            authModal.style.display = 'flex';
+        });
+
+        // Закрытие модальных окон
+        closeBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                authModal.style.display = 'none';
+                registerModal.style.display = 'none';
+                resetUserTypeSelection();
+            });
+        });
+
+        // Закрыть при клике вне окна
+        window.addEventListener('click', function(event) {
+            if (event.target === authModal) {
+                authModal.style.display = 'none';
+                resetUserTypeSelection();
+            }
+            if (event.target === registerModal) {
+                registerModal.style.display = 'none';
+                resetUserTypeSelection();
+            }
+        });
+
+        // Логика для авторизации
+        var selectedUserType = null;
+        var userTypeOptions = document.querySelectorAll('.user-type-option');
+        var submitBtn = document.getElementById('submitBtn');
+
+        // Выбор типа пользователя
+        userTypeOptions.forEach(function(option) {
+            option.addEventListener('click', function() {
+                userTypeOptions.forEach(function(opt) {
+                    opt.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                selectedUserType = this.getAttribute('data-type');
+                document.getElementById('userTypeError').style.display = 'none';
+            });
+        });
+
+        function resetUserTypeSelection() {
+            userTypeOptions.forEach(function(opt) {
+                opt.classList.remove('selected');
+            });
+            selectedUserType = null;
+            document.getElementById('userTypeError').style.display = 'none';
+        }
+
+        function redirectToUserPage(userType) {
+            if (userType === 'invalid') {
+                window.location.href = 'inclusion/inclusion.html';
+            } else if (userType === 'volunteer') {
+                window.location.href = 'volunter/volonter.html';
+            }
+        }
+
+        // Обработка формы авторизации С ПРОВЕРКОЙ РЕГИСТРАЦИИ
+        document.getElementById('authForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var login = document.getElementById('login').value;
+            var password = document.getElementById('password').value;
+            var isValid = true;
+
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('passwordError').style.display = 'none';
+            document.getElementById('userTypeError').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+
+            // Базовая валидация
+            if (!login) {
+                document.getElementById('loginError').textContent = 'Введите email или логин';
+                document.getElementById('loginError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!password) {
+                document.getElementById('passwordError').textContent = 'Введите пароль';
+                document.getElementById('passwordError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!selectedUserType) {
+                document.getElementById('userTypeError').textContent = 'Выберите тип пользователя';
+                document.getElementById('userTypeError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (isValid) {
+                // ПРОВЕРКА РЕГИСТРАЦИИ
+                var registeredUser = checkUserRegistration(login, password);
+                
+                if (registeredUser) {
+                    // Пользователь найден - успешная авторизация
+                    document.getElementById('successMessage').textContent = 'Успешная авторизация! Переход через 2 секунды...';
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('authForm').reset();
+
+                    console.log('Пользователь авторизован:', registeredUser);
+                    
+                    setTimeout(function() {
+                        authModal.style.display = 'none';
+                        redirectToUserPage(selectedUserType);
+                    }, 2000);
+                } else {
+                    // Пользователь не найден
+                    document.getElementById('loginError').textContent = 'Неверный логин или пароль, либо пользователь не зарегистрирован';
+                    document.getElementById('loginError').style.display = 'block';
+                }
+            }
+        });
+
+        // Обработка формы регистрации
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var firstName = document.getElementById('firstName').value;
+            var lastName = document.getElementById('lastName').value;
+            var email = document.getElementById('email').value;
+            var district = document.getElementById('district').value;
+            var password = document.getElementById('regPassword').value;
+            var healthCategories = [];
+            
+            // Собираем выбранные категории здоровья
+            if (document.getElementById('mobility').checked) healthCategories.push('mobility');
+            if (document.getElementById('vision').checked) healthCategories.push('vision');
+            if (document.getElementById('hearing').checked) healthCategories.push('hearing');
+            if (document.getElementById('mute').checked) healthCategories.push('mute');
+            
+            var isValid = true;
+
+            // Сброс ошибок
+            document.getElementById('firstNameError').style.display = 'none';
+            document.getElementById('lastNameError').style.display = 'none';
+            document.getElementById('emailError').style.display = 'none';
+            document.getElementById('districtError').style.display = 'none';
+            document.getElementById('regPasswordError').style.display = 'none';
+            document.getElementById('healthError').style.display = 'none';
+            document.getElementById('regSuccessMessage').style.display = 'none';
+
+            // Валидация
+            if (!firstName) {
+                document.getElementById('firstNameError').textContent = 'Введите имя';
+                document.getElementById('firstNameError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!lastName) {
+                document.getElementById('lastNameError').textContent = 'Введите фамилию';
+                document.getElementById('lastNameError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!email) {
+                document.getElementById('emailError').textContent = 'Введите email';
+                document.getElementById('emailError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!district) {
+                document.getElementById('districtError').textContent = 'Введите район';
+                document.getElementById('districtError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!password) {
+                document.getElementById('regPasswordError').textContent = 'Введите пароль';
+                document.getElementById('regPasswordError').style.display = 'block';
+                isValid = false;
+            } else if (password.length < 6) {
+                document.getElementById('regPasswordError').textContent = 'Пароль должен содержать минимум 6 символов';
+                document.getElementById('regPasswordError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (healthCategories.length === 0) {
+                document.getElementById('healthError').textContent = 'Выберите хотя бы одну категорию здоровья';
+                document.getElementById('healthError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (isValid) {
+                // Сохраняем данные регистрации
+                var userData = {
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: email,
+                    district: district,
+                    password: password,
+                    healthCategories: healthCategories,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Сохраняем в localStorage как зарегистрированного пользователя
+                var isSaved = saveRegisteredUser(userData);
+                
+                if (isSaved) {
+                    document.getElementById('regSuccessMessage').textContent = 'Регистрация успешна! Возврат к авторизации...';
+                    document.getElementById('regSuccessMessage').style.display = 'block';
+                    document.getElementById('registerForm').reset();
+
+                    console.log('Пользователь зарегистрирован:', userData);
+
+                    // Закрываем регистрацию и открываем авторизацию через 2 секунды
+                    setTimeout(function() {
+                        registerModal.style.display = 'none';
+                        authModal.style.display = 'flex';
+                    }, 2000);
+                } else {
+                    document.getElementById('emailError').textContent = 'Пользователь с таким email уже зарегистрирован';
+                    document.getElementById('emailError').style.display = 'block';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
